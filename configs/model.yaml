@@ -1,0 +1,31 @@
+sequence:
+  sequence_length: 168 # 7 days of hourly data
+  prediction_horizon: 24 # forecast next 24 hours
+
+lstm:
+  hidden_size: 64
+  num_layers: 2
+  dropout: 0.2
+  bidirectional: false
+  learning_rate: 0.001
+  batch_size: 64
+  max_epochs: 100
+  early_stopping_patience: 10
+  use_mixed_precision: false
+  lr_scheduler:
+    type: "reduce_on_plateau"
+    factor: 0.5
+    patience: 5
+
+baselines:
+  random_forest:
+    n_estimators: 200
+    max_depth: 12
+  xgboost:
+    n_estimators: 300
+    max_depth: 8
+    learning_rate: 0.05
+  lightgbm:
+    n_estimators: 300
+    num_leaves: 31
+    learning_rate: 0.05
