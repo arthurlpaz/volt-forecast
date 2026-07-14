@@ -1,0 +1,49 @@
+[tool.poetry]
+name = "energycast-ai"
+version = "0.1.0"
+description = "Continuous Learning Platform for Energy Consumption Forecasting"
+authors = ["Arthur Lincoln <arthurpcristovao@gmail.com>"]
+readme = "README.md"
+packages = [{ include = "energycast", from = "src" }]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+pandas = "^2.2"
+numpy = "^1.26"
+scikit-learn = "^1.5"
+torch = "^2.3"
+mlflow = "^2.14"
+fastapi = "^0.111"
+uvicorn = { extras = ["standard"], version = "^0.30" }
+evidently = "^0.4"
+pydantic = "^2.7"
+pydantic-settings = "^2.3"
+xgboost = "^2.0"
+lightgbm = "^4.3"
+pyyaml = "^6.0"
+python-json-logger = "^2.0"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.2"
+pytest-cov = "^5.0"
+black = "^24.4"
+ruff = "^0.5"
+pre-commit = "^3.7"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.black]
+line-length = 100
+target-version = ["py311"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
