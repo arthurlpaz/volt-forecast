@@ -1,0 +1,14 @@
+source:
+  filename: "PJME_hourly.csv"
+  datetime_column: "Datetime"
+  target_column: "PJME_MW"
+
+validation:
+  min_rows: 1000
+  allow_missing_ratio: 0.01
+  expected_frequency: "H"
+
+split:
+  train_ratio: 0.7
+  validation_ratio: 0.15
+  test_ratio: 0.15
