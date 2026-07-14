@@ -1,0 +1,14 @@
+environment: "development"
+
+paths:
+  raw_data_dir: "data/raw"
+  processed_data_dir: "data/processed"
+  artifacts_dir: "artifacts"
+
+logging:
+  level: "INFO"
+  json_format: true
+
+mlflow:
+  tracking_uri: "sqlite:///mlflow.db"
+  experiment_name: "energycast-ai"
