@@ -63,6 +63,9 @@ logs/
 
 # ---- Projeto ----
 CLAUDE.md
+# Notas internas de milestone — registro de trabalho, não documentação do
+# produto. A doc pública é o milestone 12 e mora em docs/.
+notes/
 
 # ---- IDE / SO ----
 .idea/
