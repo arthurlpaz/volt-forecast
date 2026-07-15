@@ -1,23 +1,9 @@
-"""Typed, validated configuration for the EnergyCast AI platform.
+"""Typed, validated configuration.
 
-Design rationale
------------------
-Configuration is split into three YAML files (base / data / model) that map
-onto three corresponding Pydantic models. This mirrors how the platform's
-subsystems are separated (infrastructure vs. data vs. modeling), so a change
-to sequence length never touches the same file as a change to the MLflow
-tracking URI.
+Three YAML files (base / data / model) map onto three Pydantic models, so a
+change to sequence length never touches the file holding the MLflow URI.
 
-Pydantic (not Hydra) is used as the validation layer so that:
-  1. Config errors fail fast, at startup, with a readable message instead of
-     surfacing as a cryptic KeyError three modules deep.
-  2. The same validation library is reused by the FastAPI layer (milestone 8),
-     avoiding a second config paradigm in the same codebase.
-  3. Secrets / environment-specific values (e.g. MLFLOW tracking URI in
-     production) can override YAML defaults via environment variables,
-     without editing files that are checked into version control.
-
-Env override example:
+Any field can be overridden by an environment variable:
     ENERGYCAST_BASE__MLFLOW__TRACKING_URI=postgresql://...
 """
 
@@ -71,16 +57,13 @@ class SplitConfig(BaseModel):
     def ratios_must_sum_to_one(self) -> SplitConfig:
         """Reject splits that do not account for exactly 100% of the data.
 
-        Without this, ratios summing to less than 1.0 silently discard rows
-        and ratios summing to more than 1.0 silently overlap the splits —
-        leaking training data into the test set. Either way the failure is
-        invisible until it shows up as an implausibly good score in the
-        champion/challenger comparison, by which point it is expensive to
-        trace. Fail at startup instead.
+        Summing under 1.0 silently discards rows; over 1.0 silently overlaps
+        the splits and leaks training data into test. Both stay invisible
+        until they surface as an implausibly good score much later.
         """
         total = self.train_ratio + self.validation_ratio + self.test_ratio
-        # Tolerance accommodates float representation (0.7 + 0.15 + 0.15 is
-        # not exactly 1.0 in binary), while still catching real typos.
+        # Tolerance for float representation, e.g. 0.7 + 0.2 + 0.1 is
+        # 0.9999999999999999, while still catching real typos.
         if abs(total - 1.0) > 1e-9:
             raise ValueError(
                 f"train/validation/test ratios must sum to 1.0, got {total:.6g} "
@@ -144,12 +127,7 @@ class ModelConfig(BaseModel):
 
 
 class Settings(BaseSettings):
-    """Aggregated, validated settings for the whole platform.
-
-    Values are loaded from YAML, then environment variables prefixed with
-    ENERGYCAST_ override any field, using `__` as the nested delimiter
-    (e.g. ENERGYCAST_BASE__MLFLOW__TRACKING_URI).
-    """
+    """Aggregated, validated settings for the whole platform."""
 
     model_config = SettingsConfigDict(
         env_prefix="ENERGYCAST_",
@@ -171,14 +149,10 @@ class Settings(BaseSettings):
     ) -> tuple[PydanticBaseSettingsSource, ...]:
         """Give environment variables priority over the YAML files.
 
-        `get_settings` feeds YAML in through init kwargs, and pydantic-settings
-        ranks init ABOVE env by default — which silently made every
-        ENERGYCAST_* override a no-op. Reordering puts env first, so that
-        deployments can point the platform at a real MLflow backend (milestone
-        8) without editing files that are committed to version control.
-
-        Sources are deep-merged, so an override of one leaf leaves its
-        siblings in the same nested model untouched.
+        `get_settings` feeds YAML in as init kwargs, which pydantic-settings
+        ranks above env by default, making every ENERGYCAST_* override a
+        silent no-op. Sources are deep-merged, so overriding one leaf leaves
+        its siblings intact.
         """
         return (env_settings, init_settings, dotenv_settings, file_secret_settings)
 
@@ -195,10 +169,8 @@ def _load_yaml(filename: str) -> dict:
 def get_settings() -> Settings:
     """Load and validate settings once per process.
 
-    Cached with lru_cache so that every module in the platform shares a
-    single validated Settings instance instead of re-reading and
-    re-parsing YAML on every call (and so tests can call
-    `get_settings.cache_clear()` to reload with different config).
+    Cached so every module shares one validated instance; tests call
+    `get_settings.cache_clear()` to reload with different config.
     """
     raw = {
         "base": _load_yaml("base.yaml"),
