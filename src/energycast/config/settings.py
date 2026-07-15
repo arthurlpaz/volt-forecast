@@ -18,7 +18,7 @@ Pydantic (not Hydra) is used as the validation layer so that:
      without editing files that are checked into version control.
 
 Env override example:
-    ENERGYCAST_MLFLOW__TRACKING_URI=postgresql://... 
+    ENERGYCAST_BASE__MLFLOW__TRACKING_URI=postgresql://...
 """
 
 from __future__ import annotations
@@ -28,8 +28,8 @@ from pathlib import Path
 from typing import Literal
 
 import yaml
-from pydantic import BaseModel, Field
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import BaseModel, Field, model_validator
+from pydantic_settings import BaseSettings, PydanticBaseSettingsSource, SettingsConfigDict
 
 CONFIG_DIR = Path(__file__).resolve().parents[3] / "configs"
 
@@ -63,9 +63,31 @@ class ValidationConfig(BaseModel):
 
 
 class SplitConfig(BaseModel):
-    train_ratio: float
-    validation_ratio: float
-    test_ratio: float
+    train_ratio: float = Field(gt=0.0, lt=1.0)
+    validation_ratio: float = Field(gt=0.0, lt=1.0)
+    test_ratio: float = Field(gt=0.0, lt=1.0)
+
+    @model_validator(mode="after")
+    def ratios_must_sum_to_one(self) -> SplitConfig:
+        """Reject splits that do not account for exactly 100% of the data.
+
+        Without this, ratios summing to less than 1.0 silently discard rows
+        and ratios summing to more than 1.0 silently overlap the splits —
+        leaking training data into the test set. Either way the failure is
+        invisible until it shows up as an implausibly good score in the
+        champion/challenger comparison, by which point it is expensive to
+        trace. Fail at startup instead.
+        """
+        total = self.train_ratio + self.validation_ratio + self.test_ratio
+        # Tolerance accommodates float representation (0.7 + 0.15 + 0.15 is
+        # not exactly 1.0 in binary), while still catching real typos.
+        if abs(total - 1.0) > 1e-9:
+            raise ValueError(
+                f"train/validation/test ratios must sum to 1.0, got {total:.6g} "
+                f"(train={self.train_ratio}, validation={self.validation_ratio}, "
+                f"test={self.test_ratio})"
+            )
+        return self
 
 
 class SequenceConfig(BaseModel):
@@ -124,9 +146,9 @@ class ModelConfig(BaseModel):
 class Settings(BaseSettings):
     """Aggregated, validated settings for the whole platform.
 
-    Values are first loaded from YAML, then this class allows environment
-    variables prefixed with ENERGYCAST_ to override any field, using `__`
-    as the nested delimiter (e.g. ENERGYCAST_MLFLOW__TRACKING_URI).
+    Values are loaded from YAML, then environment variables prefixed with
+    ENERGYCAST_ override any field, using `__` as the nested delimiter
+    (e.g. ENERGYCAST_BASE__MLFLOW__TRACKING_URI).
     """
 
     model_config = SettingsConfigDict(
@@ -137,6 +159,28 @@ class Settings(BaseSettings):
     base: BaseAppConfig
     data: DataConfig
     model: ModelConfig
+
+    @classmethod
+    def settings_customise_sources(
+        cls,
+        settings_cls: type[BaseSettings],
+        init_settings: PydanticBaseSettingsSource,
+        env_settings: PydanticBaseSettingsSource,
+        dotenv_settings: PydanticBaseSettingsSource,
+        file_secret_settings: PydanticBaseSettingsSource,
+    ) -> tuple[PydanticBaseSettingsSource, ...]:
+        """Give environment variables priority over the YAML files.
+
+        `get_settings` feeds YAML in through init kwargs, and pydantic-settings
+        ranks init ABOVE env by default — which silently made every
+        ENERGYCAST_* override a no-op. Reordering puts env first, so that
+        deployments can point the platform at a real MLflow backend (milestone
+        8) without editing files that are committed to version control.
+
+        Sources are deep-merged, so an override of one leaf leaves its
+        siblings in the same nested model untouched.
+        """
+        return (env_settings, init_settings, dotenv_settings, file_secret_settings)
 
 
 def _load_yaml(filename: str) -> dict:

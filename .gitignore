@@ -1,0 +1,72 @@
+# ---- Python ----
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+dist/
+*.egg-info/
+.eggs/
+*.egg
+
+# ---- Virtual environments ----
+.venv/
+venv/
+env/
+ENV/
+
+# ---- Poetry ----
+# poetry.lock IS committed (determinismo é uma decisão do projeto — ver CLAUDE.md)
+
+# ---- Testing / coverage ----
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+.cache/
+
+# ---- Linters / type checkers ----
+.ruff_cache/
+.mypy_cache/
+.dmypy.json
+
+# ---- Jupyter ----
+.ipynb_checkpoints/
+
+# ---- Data (grandes / reproduzíveis — não versionar) ----
+data/raw/*
+data/processed/*
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+
+# ---- ML artifacts ----
+mlruns/
+mlartifacts/
+*.pt
+*.pth
+*.ckpt
+*.joblib
+*.pkl
+*.onnx
+models/
+
+# ---- Logs ----
+*.log
+logs/
+
+# ---- Secrets / ambiente ----
+.env
+.env.*
+!.env.example
+
+# ---- Projeto ----
+CLAUDE.md
+
+# ---- IDE / SO ----
+.idea/
+.vscode/
+*.swp
+.DS_Store
+Thumbs.db

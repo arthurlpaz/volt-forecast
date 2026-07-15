@@ -1,0 +1,29 @@
+# Versions are pinned rather than floating: a hook that silently upgrades
+# reformats the codebase out from under you and turns an unrelated PR into a
+# 400-line diff. Bump these deliberately, via `pre-commit autoupdate`.
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-toml
+      - id: check-added-large-files
+        # The PJM dataset lives in data/ and is gitignored; this is the
+        # backstop for when someone -f's it in anyway.
+        args: [--maxkb=1000]
+      - id: check-merge-conflict
+      - id: debug-statements
+
+  - repo: https://github.com/psf/black
+    rev: 24.4.2
+    hooks:
+      - id: black
+        args: [--line-length=100]
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.5.0
+    hooks:
+      - id: ruff
+        args: [--fix]

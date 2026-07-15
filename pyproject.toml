@@ -6,12 +6,24 @@ authors = ["Arthur Lincoln <arthurpcristovao@gmail.com>"]
 readme = "README.md"
 packages = [{ include = "energycast", from = "src" }]
 
+# CPU-only torch. The CUDA build pulls ~5 GB of nvidia-* wheels; the LSTM in
+# milestone 5 runs on ~145k rows of hourly data, which does not need a GPU.
+# To move to CUDA later, drop the `source` key from torch below and re-lock.
+# priority = "explicit" means ONLY packages that name this source use it —
+# everything else still resolves from PyPI.
+[[tool.poetry.source]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+priority = "explicit"
+
 [tool.poetry.dependencies]
-python = "^3.11"
+# Pinned to <3.13: numpy 1.26 publishes no wheels for 3.13, and the conda env
+# for this project is created with python=3.11.
+python = ">=3.11,<3.13"
 pandas = "^2.2"
 numpy = "^1.26"
 scikit-learn = "^1.5"
-torch = "^2.3"
+torch = { version = "^2.3", source = "pytorch-cpu" }
 mlflow = "^2.14"
 fastapi = "^0.111"
 uvicorn = { extras = ["standard"], version = "^0.30" }
@@ -44,6 +56,12 @@ target-version = "py311"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
+
+[tool.ruff.lint.isort]
+# Without this, `energycast` is sorted into the third-party block alongside
+# pandas and pytest, which hides the boundary between our code and the
+# dependency tree in every import list in the project.
+known-first-party = ["energycast"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
