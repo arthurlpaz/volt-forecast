@@ -17,7 +17,7 @@ env/
 ENV/
 
 # ---- Poetry ----
-# poetry.lock IS committed (determinismo é uma decisão do projeto — ver CLAUDE.md)
+# poetry.lock IS committed — determinism is a project decision, see CLAUDE.md
 
 # ---- Testing / coverage ----
 .pytest_cache/
@@ -35,7 +35,7 @@ coverage.xml
 # ---- Jupyter ----
 .ipynb_checkpoints/
 
-# ---- Data (grandes / reproduzíveis — não versionar) ----
+# ---- Data (large / reproducible — not versioned) ----
 data/raw/*
 data/processed/*
 !data/raw/.gitkeep
@@ -56,18 +56,17 @@ models/
 *.log
 logs/
 
-# ---- Secrets / ambiente ----
+# ---- Secrets / environment ----
 .env
 .env.*
 !.env.example
 
-# ---- Projeto ----
+# ---- Project ----
 CLAUDE.md
-# Notas internas de milestone — registro de trabalho, não documentação do
-# produto. A doc pública é o milestone 12 e mora em docs/.
+# Internal work log, not product documentation.
 notes/
 
-# ---- IDE / SO ----
+# ---- IDE / OS ----
 .idea/
 .vscode/
 *.swp
