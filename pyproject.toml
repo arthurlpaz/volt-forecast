@@ -41,6 +41,7 @@ pytest-cov = "^5.0"
 black = "^24.4"
 ruff = "^0.5"
 pre-commit = "^3.7"
+kaggle = "^1.6"
 
 [build-system]
 requires = ["poetry-core"]
