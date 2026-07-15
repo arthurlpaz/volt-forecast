@@ -2,6 +2,13 @@ sequence:
   sequence_length: 168 # 7 days of hourly data
   prediction_horizon: 24 # forecast next 24 hours
 
+features:
+  # Hours back. 24 and 168 carry the daily and weekly cycles; 1-3 carry momentum.
+  lags: [1, 2, 3, 24, 48, 168]
+  # Trailing windows, in hours, excluding the current hour.
+  rolling_windows: [24, 168]
+  scaler: "standard"
+
 lstm:
   hidden_size: 64
   num_layers: 2

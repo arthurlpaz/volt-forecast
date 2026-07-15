@@ -3,8 +3,9 @@
 Three YAML files (base / data / model) map onto three Pydantic models, so a
 change to sequence length never touches the file holding the MLflow URI.
 
-Any field can be overridden by an environment variable:
-    ENERGYCAST_BASE__MLFLOW__TRACKING_URI=postgresql://...
+Any field can be overridden by an environment variable, `__` marking each level
+of nesting:
+    ENERGYCAST_BASE__LOGGING__LEVEL=DEBUG
 """
 
 from __future__ import annotations
@@ -78,6 +79,23 @@ class SequenceConfig(BaseModel):
     prediction_horizon: int = Field(gt=0)
 
 
+class FeaturesConfig(BaseModel):
+    lags: list[int] = Field(min_length=1)
+    rolling_windows: list[int]
+    # One value today. A Literal rather than a free string so that configuring
+    # a scaler nobody implemented fails at load instead of being ignored.
+    scaler: Literal["standard"]
+
+    @model_validator(mode="after")
+    def periods_must_be_positive(self) -> FeaturesConfig:
+        if any(lag < 1 for lag in self.lags):
+            raise ValueError(f"lags must be >= 1 hour, got {self.lags}")
+        # A one-hour rolling window is the lag itself under a costlier name.
+        if any(window < 2 for window in self.rolling_windows):
+            raise ValueError(f"rolling_windows must be >= 2 hours, got {self.rolling_windows}")
+        return self
+
+
 class LRSchedulerConfig(BaseModel):
     type: str
     factor: float
@@ -122,6 +140,7 @@ class DataConfig(BaseModel):
 
 class ModelConfig(BaseModel):
     sequence: SequenceConfig
+    features: FeaturesConfig
     lstm: LSTMConfig
     baselines: BaselinesConfig
 

@@ -72,16 +72,25 @@ class TestEnvironmentOverrides:
     """The module docstring and README both promise ENERGYCAST_-prefixed env
     overrides. This is the contract that milestone 8 (FastAPI in production,
     pointing at a real MLflow backend) will depend on, so it needs to hold.
+
+    Values here are deliberately plausible-but-unremarkable: the Postgres URI
+    these tests used to carry read as a decided backend that nobody had decided.
     """
 
-    def test_env_var_overrides_yaml_value(self, monkeypatch):
-        monkeypatch.setenv("ENERGYCAST_BASE__MLFLOW__TRACKING_URI", "postgresql://override")
+    def test_the_example_the_readme_documents_works(self, monkeypatch):
+        monkeypatch.setenv("ENERGYCAST_BASE__LOGGING__LEVEL", "DEBUG")
         get_settings.cache_clear()
 
-        assert get_settings().base.mlflow.tracking_uri == "postgresql://override"
+        assert get_settings().base.logging.level == "DEBUG"
+
+    def test_env_var_overrides_yaml_value(self, monkeypatch):
+        monkeypatch.setenv("ENERGYCAST_BASE__MLFLOW__TRACKING_URI", "sqlite:///override.db")
+        get_settings.cache_clear()
+
+        assert get_settings().base.mlflow.tracking_uri == "sqlite:///override.db"
 
     def test_unset_fields_still_come_from_yaml(self, monkeypatch):
-        monkeypatch.setenv("ENERGYCAST_BASE__MLFLOW__TRACKING_URI", "postgresql://override")
+        monkeypatch.setenv("ENERGYCAST_BASE__MLFLOW__TRACKING_URI", "sqlite:///override.db")
         get_settings.cache_clear()
 
         settings = get_settings()
