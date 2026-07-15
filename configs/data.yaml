@@ -5,8 +5,11 @@ source:
 
 validation:
   min_rows: 1000
+  # Applied to BOTH missing target values and gaps in the hourly index; the
+  # PJME data currently has 0 of the former and 0.02% of the latter.
   allow_missing_ratio: 0.01
-  expected_frequency: "H"
+  # Lowercase "h": pandas 2.2 deprecated "H" and will remove it.
+  expected_frequency: "h"
 
 split:
   train_ratio: 0.7
