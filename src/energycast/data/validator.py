@@ -35,18 +35,24 @@ class SchemaValidator:
 
     Reports; never mutates. Cleaning belongs to `TimeSeriesCleaner`, so that a
     failure describes the data you have rather than what a repair step left.
+
+    Missing targets and missing hours have separate allowances: a NaN reading
+    and an hour the source never shipped are different failures, and one
+    tolerance could not be relaxed for either without relaxing both.
     """
 
     def __init__(
         self,
         target_column: str,
         min_rows: int,
-        allow_missing_ratio: float,
+        allow_missing_target_ratio: float,
+        allow_missing_index_ratio: float,
         expected_frequency: str,
     ) -> None:
         self.target_column = target_column
         self.min_rows = min_rows
-        self.allow_missing_ratio = allow_missing_ratio
+        self.allow_missing_target_ratio = allow_missing_target_ratio
+        self.allow_missing_index_ratio = allow_missing_index_ratio
         self.expected_frequency = expected_frequency
 
     @classmethod
@@ -58,7 +64,8 @@ class SchemaValidator:
         return cls(
             target_column=settings.data.source.target_column,
             min_rows=validation.min_rows,
-            allow_missing_ratio=validation.allow_missing_ratio,
+            allow_missing_target_ratio=validation.allow_missing_target_ratio,
+            allow_missing_index_ratio=validation.allow_missing_index_ratio,
             expected_frequency=validation.expected_frequency,
         )
 
@@ -81,10 +88,10 @@ class SchemaValidator:
             problems.append(f"expected at least {self.min_rows} rows, got {rows}")
 
         missing_target_ratio = float(frame[self.target_column].isna().mean()) if rows else 0.0
-        if missing_target_ratio > self.allow_missing_ratio:
+        if missing_target_ratio > self.allow_missing_target_ratio:
             problems.append(
                 f"missing target values {missing_target_ratio:.4%} exceed the allowed "
-                f"{self.allow_missing_ratio:.4%}"
+                f"{self.allow_missing_target_ratio:.4%}"
             )
 
         if not frame.index.is_monotonic_increasing:
@@ -102,10 +109,10 @@ class SchemaValidator:
             )
             gaps = len(expected_index.difference(frame.index))
             missing_index_ratio = gaps / len(expected_index)
-            if missing_index_ratio > self.allow_missing_ratio:
+            if missing_index_ratio > self.allow_missing_index_ratio:
                 problems.append(
                     f"{gaps} hour(s) absent from the index ({missing_index_ratio:.4%}) exceed "
-                    f"the allowed {self.allow_missing_ratio:.4%}"
+                    f"the allowed {self.allow_missing_index_ratio:.4%}"
                 )
 
         report = ValidationReport(

@@ -5,9 +5,12 @@ source:
 
 validation:
   min_rows: 1000
-  # Applied to BOTH missing target values and gaps in the hourly index; the
-  # PJME data currently has 0 of the former and 0.02% of the latter.
-  allow_missing_ratio: 0.01
+  # Two keys, not one: a NaN reading and an hour the source never shipped are
+  # different failures with different fixes, and one key could not be loosened
+  # for either without loosening it for both. PJME has 0% of the former and
+  # 0.02% of the latter.
+  allow_missing_target_ratio: 0.01
+  allow_missing_index_ratio: 0.01
   # Lowercase "h": pandas 2.2 deprecated "H" and will remove it.
   expected_frequency: "h"
 

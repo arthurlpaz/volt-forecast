@@ -121,11 +121,16 @@ class TestTimeSeriesCleaner:
         assert list(cleaned.columns) == [TARGET_COL]
 
 
-def _validator(min_rows: int = 10, allow_missing_ratio: float = 0.01) -> SchemaValidator:
+def _validator(
+    min_rows: int = 10,
+    allow_missing_target_ratio: float = 0.01,
+    allow_missing_index_ratio: float = 0.01,
+) -> SchemaValidator:
     return SchemaValidator(
         target_column=TARGET_COL,
         min_rows=min_rows,
-        allow_missing_ratio=allow_missing_ratio,
+        allow_missing_target_ratio=allow_missing_target_ratio,
+        allow_missing_index_ratio=allow_missing_index_ratio,
         expected_frequency="h",
     )
 
@@ -160,6 +165,19 @@ class TestSchemaValidator:
         # The real PJME file is missing 0.02% of its hours; that must not fail.
         frame = _hourly_frame(1000).drop(index=_hourly_frame(1000).index[500:501])
         assert _validator().validate(frame).is_valid
+
+    def test_the_two_allowances_move_independently(self):
+        # The whole point of splitting the key: tolerate the source omitting
+        # hours without also tolerating NaN in the hours it did ship.
+        frame = _hourly_frame(1000).drop(index=_hourly_frame(1000).index[100:150])
+        frame.iloc[:5] = None
+
+        report = _validator(
+            allow_missing_target_ratio=0.0, allow_missing_index_ratio=0.10
+        ).validate(frame, raise_on_error=False)
+
+        assert [p for p in report.problems if "missing target values" in p]
+        assert not [p for p in report.problems if "absent from the index" in p]
 
     def test_unsorted_index_is_rejected(self):
         frame = _hourly_frame(100).iloc[::-1]
@@ -253,7 +271,14 @@ class TestFromSettings:
 
         assert validator.target_column == settings.data.source.target_column
         assert validator.min_rows == settings.data.validation.min_rows
-        assert validator.allow_missing_ratio == settings.data.validation.allow_missing_ratio
+        assert (
+            validator.allow_missing_target_ratio
+            == settings.data.validation.allow_missing_target_ratio
+        )
+        assert (
+            validator.allow_missing_index_ratio
+            == settings.data.validation.allow_missing_index_ratio
+        )
         # Literal, unlike the rest: guards against "H" returning to the config.
         assert validator.expected_frequency == "h"
 

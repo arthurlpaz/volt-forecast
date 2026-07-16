@@ -84,7 +84,8 @@ own MLflow or log level without editing a versioned config.
 src/energycast/
 ├── config/     # typed Settings + YAML loading
 ├── data/       # load -> clean -> validate -> split
-├── features/   # calendar + lags -> scale -> sequences
+├── features/   # calendar + lags -> scale -> sequences | horizon targets
+├── models/     # Model protocol, seasonal naive, tabular baselines
 └── utils/      # structured logging
 ```
 
@@ -125,5 +126,39 @@ dataset = SequenceBuilder.from_settings().build(scaler.transform(train))
 
 Report every metric through `scaler.inverse_transform(...)`. Train sigma is
 ~6,500 MW, so an RMSE left in z-units reads 25x better than it is.
+
+## Models
+
+Every model answers one question — given the features of hour t, what are hours
+t+1 .. t+24 — and returns `(n_rows, 24)`. That is the same shape the
+`SequenceBuilder` produces for the LSTM, which is what lets them be compared.
+
+**Predicting t+1 instead is a different, easier question**: the same model on
+the same features scores RMSE 507 at t+1 against 2,605 at t+24 — **5.1x apart**.
+A one-hour baseline would beat a 24-hour LSTM while answering something else.
+
+```python
+from energycast.features import HorizonTargetBuilder
+from energycast.models import SeasonalNaiveModel, build_from_settings
+
+train = HorizonTargetBuilder.from_settings().build(train_features)
+model = build_from_settings()["lightgbm"].fit(train.X, train.y)
+predictions = model.predict(test.X)          # (n_rows, 24)
+```
+
+`SeasonalNaiveModel` — the same hour one week back — is the bar, not a model. A
+learned model that cannot beat it has not earned its complexity. Measured on the
+PJME test split:
+
+| | RMSE | vs naive |
+|---|---|---|
+| seasonal naive (the bar) | 4,761 | — |
+| linear regression | 2,699 | +43% |
+| random forest | 2,218 | +53% |
+| xgboost | 2,103 | +56% |
+| lightgbm | 2,094 | +56% |
+
+Error is not uniform across the horizon: the best model scores 390 MW at t+1 and
+2,502 at t+24. Report per-horizon, not just the 24-hour average.
 
 See `CLAUDE.md` for architectural decisions and the milestone roadmap.

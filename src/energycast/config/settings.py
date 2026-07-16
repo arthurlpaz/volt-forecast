@@ -45,7 +45,8 @@ class SourceConfig(BaseModel):
 
 class ValidationConfig(BaseModel):
     min_rows: int
-    allow_missing_ratio: float = Field(ge=0.0, le=1.0)
+    allow_missing_target_ratio: float = Field(ge=0.0, le=1.0)
+    allow_missing_index_ratio: float = Field(ge=0.0, le=1.0)
     expected_frequency: str
 
 
@@ -118,8 +119,18 @@ class LSTMConfig(BaseModel):
 class BaselineModelConfig(BaseModel):
     model_config = {"extra": "allow"}
 
+    def hyperparameters(self) -> dict:
+        return self.model_dump()
+
+
+class SeasonalNaiveConfig(BaseModel):
+    season_length: int = Field(gt=0)
+
 
 class BaselinesConfig(BaseModel):
+    random_state: int
+    n_jobs: int
+    seasonal_naive: SeasonalNaiveConfig
     random_forest: BaselineModelConfig
     xgboost: BaselineModelConfig
     lightgbm: BaselineModelConfig
@@ -143,6 +154,24 @@ class ModelConfig(BaseModel):
     features: FeaturesConfig
     lstm: LSTMConfig
     baselines: BaselinesConfig
+
+    @model_validator(mode="after")
+    def season_must_reach_past_the_horizon(self) -> ModelConfig:
+        """Reject a season the naive model would have to read the future to use.
+
+        Predicting t+h from t+h-season only works while season > h. At
+        season == h it reads the very hour being predicted, and scores
+        perfectly against a target it was handed.
+        """
+        season = self.baselines.seasonal_naive.season_length
+        horizon = self.sequence.prediction_horizon
+        if season <= horizon:
+            raise ValueError(
+                f"seasonal_naive.season_length ({season}) must exceed "
+                f"sequence.prediction_horizon ({horizon}); at or below it, the naive model "
+                "reads the hours it is meant to predict"
+            )
+        return self
 
 
 class Settings(BaseSettings):
