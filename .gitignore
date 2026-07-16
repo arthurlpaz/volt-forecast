@@ -42,15 +42,20 @@ data/processed/*
 !data/processed/.gitkeep
 
 # ---- ML artifacts ----
+# "models/" used to live here for trained artifacts. Unanchored, it matched
+# any directory of that name at any depth — and the only one in the repo is
+# src/energycast/models, the baseline source code. Artifacts go to the
+# artifacts_dir named in configs/base.yaml, which is what is ignored now.
 mlruns/
 mlartifacts/
+artifacts/*
+!artifacts/.gitkeep
 *.pt
 *.pth
 *.ckpt
 *.joblib
 *.pkl
 *.onnx
-models/
 
 # ---- Logs ----
 *.log
