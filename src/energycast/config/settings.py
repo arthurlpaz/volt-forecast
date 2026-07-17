@@ -104,6 +104,7 @@ class LRSchedulerConfig(BaseModel):
 
 
 class LSTMConfig(BaseModel):
+    seed: int
     hidden_size: int = Field(gt=0)
     num_layers: int = Field(gt=0)
     dropout: float = Field(ge=0.0, lt=1.0)

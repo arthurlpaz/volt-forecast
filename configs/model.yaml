@@ -10,6 +10,7 @@ features:
   scaler: "standard"
 
 lstm:
+  seed: 42
   hidden_size: 64
   num_layers: 2
   dropout: 0.2
