@@ -18,10 +18,13 @@ from energycast.models.baselines import (
     random_forest,
     xgboost,
 )
+from energycast.models.lstm import LSTMError, LSTMForecaster
 from energycast.models.naive import NaiveModelError, SeasonalNaiveModel
 
 __all__ = [
     "Model",
+    "LSTMError",
+    "LSTMForecaster",
     "NaiveModelError",
     "SeasonalNaiveModel",
     "SklearnBaseline",
