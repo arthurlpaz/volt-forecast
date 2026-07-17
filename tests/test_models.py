@@ -21,9 +21,12 @@ from energycast.features import (
     CalendarFeatureBuilder,
     HorizonTargetBuilder,
     LagFeatureBuilder,
+    SequenceBuilder,
     TargetError,
 )
 from energycast.models import (
+    LSTMError,
+    LSTMForecaster,
     Model,
     NaiveModelError,
     SeasonalNaiveModel,
@@ -247,6 +250,94 @@ class TestBaselines:
             settings.model.baselines.random_forest.hyperparameters()["n_estimators"]
         )
         assert models["xgboost"].estimator.random_state == settings.model.baselines.random_state
+
+
+def _seasonal_windows(
+    hours: int = 500, sequence_length: int = 24, horizon: int = 3
+) -> tuple[np.ndarray, np.ndarray]:
+    index = pd.date_range("2020-01-01", periods=hours, freq="h")
+    signal = np.sin(2 * np.pi * np.arange(hours) / 24.0)
+    frame = pd.DataFrame({TARGET_COL: signal.astype("float32")}, index=index)
+    dataset = SequenceBuilder(sequence_length, horizon, TARGET_COL).build(frame)
+    return dataset.X, dataset.y
+
+
+def _forecaster(horizon: int = 3, **overrides) -> LSTMForecaster:
+    defaults = dict(
+        hidden_size=16,
+        num_layers=1,
+        dropout=0.0,
+        bidirectional=False,
+        learning_rate=0.01,
+        batch_size=32,
+        max_epochs=40,
+        early_stopping_patience=40,
+        lr_scheduler_factor=0.5,
+        lr_scheduler_patience=5,
+        seed=42,
+    )
+    defaults.update(overrides)
+    return LSTMForecaster(**defaults)
+
+
+class TestLSTMForecaster:
+    def test_predicts_the_full_horizon_and_satisfies_the_protocol(self):
+        X, y = _seasonal_windows()
+        model = _forecaster()
+
+        assert isinstance(model, Model)
+        assert model.fit(X, y) is model
+
+        predictions = model.predict(X)
+        assert predictions.shape == y.shape
+        assert np.isfinite(predictions).all()
+
+    def test_learns_a_seasonal_signal_better_than_its_mean(self):
+        X, y = _seasonal_windows()
+        predictions = _forecaster().fit(X, y).predict(X)
+
+        fitted_rmse = float(np.sqrt(np.mean((predictions - y) ** 2)))
+        mean_rmse = float(np.sqrt(np.mean((y.mean() - y) ** 2)))
+        assert fitted_rmse < mean_rmse
+
+    def test_same_seed_reproduces_predictions(self):
+        X, y = _seasonal_windows()
+
+        first = _forecaster().fit(X, y).predict(X)
+        second = _forecaster().fit(X, y).predict(X)
+        assert np.array_equal(first, second)
+
+    def test_explicit_validation_split_is_used(self):
+        X, y = _seasonal_windows()
+        cut = 400
+        model = _forecaster().fit(X[:cut], y[:cut], X[cut:], y[cut:])
+
+        assert model.predict(X[cut:]).shape == y[cut:].shape
+
+    def test_predict_before_fit_is_refused(self):
+        with pytest.raises(LSTMError, match="Call fit before predict"):
+            _forecaster().predict(_seasonal_windows()[0])
+
+    def test_two_dimensional_input_is_refused(self):
+        X, y = _seasonal_windows()
+
+        with pytest.raises(LSTMError, match="sequence_length, n_features"):
+            _forecaster().fit(X.reshape(len(X), -1), y)
+
+    def test_too_few_windows_to_hold_out_a_tail_is_a_clear_error(self):
+        X, y = _seasonal_windows()
+
+        with pytest.raises(LSTMError, match="cannot be split"):
+            _forecaster(validation_fraction=0.0).fit(X, y)
+
+    def test_from_settings_wires_the_config(self):
+        settings = get_settings().model.lstm
+        model = LSTMForecaster.from_settings()
+
+        assert model.name == "lstm"
+        assert model.hidden_size == settings.hidden_size
+        assert model.seed == settings.seed
+        assert model.lr_scheduler_patience == settings.lr_scheduler.patience
 
 
 @pytest.mark.skipif(not REAL_DATA.exists(), reason="PJME data not downloaded (gitignored)")
