@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
+
 import numpy as np
 import torch
 from torch import nn
@@ -119,6 +121,7 @@ class LSTMForecaster:
         y: np.ndarray,
         X_val: np.ndarray | None = None,
         y_val: np.ndarray | None = None,
+        epoch_callback: Callable[[int, float, float], None] | None = None,
     ) -> LSTMForecaster:
         if X.ndim != 3:
             raise LSTMError(
@@ -154,9 +157,12 @@ class LSTMForecaster:
 
         for _ in range(self.max_epochs):
             epochs_run += 1
-            self._train_epoch(train_loader, optimiser, criterion)
+            train_loss = self._train_epoch(train_loader, optimiser, criterion)
             val_loss = self._evaluate(val_loader, criterion)
             scheduler.step(val_loss)
+
+            if epoch_callback is not None:
+                epoch_callback(epochs_run, train_loss, val_loss)
 
             if val_loss < best_val:
                 best_val = val_loss
@@ -224,8 +230,10 @@ class LSTMForecaster:
 
     def _train_epoch(
         self, loader: DataLoader, optimiser: torch.optim.Optimizer, criterion: nn.Module
-    ) -> None:
+    ) -> float:
         self.network.train()
+        total = 0.0
+        count = 0
         for windows, targets in loader:
             windows = windows.to(self.device)
             targets = targets.to(self.device)
@@ -233,6 +241,9 @@ class LSTMForecaster:
             loss = criterion(self.network(windows), targets)
             loss.backward()
             optimiser.step()
+            total += loss.item() * len(windows)
+            count += len(windows)
+        return total / count
 
     def _evaluate(self, loader: DataLoader, criterion: nn.Module) -> float:
         self.network.eval()
