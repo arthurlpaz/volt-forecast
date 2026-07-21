@@ -48,6 +48,8 @@ data/processed/*
 # artifacts_dir named in configs/base.yaml, which is what is ignored now.
 mlruns/
 mlartifacts/
+# The MLflow sqlite tracking store from configs/base.yaml's tracking_uri.
+mlflow.db
 artifacts/*
 !artifacts/.gitkeep
 *.pt
