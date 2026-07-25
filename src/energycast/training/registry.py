@@ -45,6 +45,11 @@ class RegistryError(RuntimeError):
     """Raised when a model cannot be persisted or brought back whole."""
 
 
+def registered_name(name: str) -> str:
+    """The Model Registry name a roster model is registered and loaded under."""
+    return f"energycast-{name}"
+
+
 @dataclass(frozen=True)
 class ModelMeta:
     """What a fitted model needs beside its weights to be run again."""
@@ -65,6 +70,7 @@ class LoadedModel:
     model: LSTMForecaster | SklearnBaseline
     scaler: SeriesScaler
     meta: ModelMeta
+    run_id: str
 
 
 def log_and_register(
@@ -120,7 +126,7 @@ def load_registered(registered_name: str, version: str | None = None) -> LoadedM
     else:
         model = SklearnBaseline(meta.name, loaded)
 
-    return LoadedModel(model=model, scaler=scaler, meta=meta)
+    return LoadedModel(model=model, scaler=scaler, meta=meta, run_id=run_id)
 
 
 def _latest_version(client: MlflowClient, registered_name: str) -> str:
