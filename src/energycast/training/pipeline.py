@@ -32,7 +32,12 @@ from energycast.features import (
     TabularDataset,
 )
 from energycast.models import LSTMForecaster, SklearnBaseline, build_from_settings
-from energycast.training.registry import ModelMeta, log_and_register, lstm_hyperparameters
+from energycast.training.registry import (
+    ModelMeta,
+    log_and_register,
+    lstm_hyperparameters,
+    registered_name,
+)
 from energycast.training.tracking import ExperimentTracker
 from energycast.utils import get_logger
 
@@ -137,7 +142,7 @@ class TrainingPipeline:
                 sequence_length=self.settings.model.sequence.sequence_length,
                 hyperparameters=lstm_hyperparameters(model),
             )
-            return log_and_register(model, self.prepared.scaler, meta, f"energycast-{model.name}")
+            return log_and_register(model, self.prepared.scaler, meta, registered_name(model.name))
 
     def train_baseline(self, name: str, model: SklearnBaseline) -> str:
         train = self.prepared.tabular["train"]
@@ -160,7 +165,7 @@ class TrainingPipeline:
                 sequence_length=None,
                 hyperparameters={},
             )
-            return log_and_register(model, self.prepared.scaler, meta, f"energycast-{name}")
+            return log_and_register(model, self.prepared.scaler, meta, registered_name(name))
 
     def run_all(self) -> dict[str, str]:
         versions = {"lstm": self.train_lstm()}

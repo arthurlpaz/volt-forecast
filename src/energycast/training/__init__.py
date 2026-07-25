@@ -20,6 +20,7 @@ from energycast.training.registry import (
     load_registered,
     log_and_register,
     lstm_hyperparameters,
+    registered_name,
 )
 from energycast.training.tracking import ExperimentTracker
 
@@ -36,4 +37,5 @@ __all__ = [
     "lstm_hyperparameters",
     "main",
     "prepare_data",
+    "registered_name",
 ]
