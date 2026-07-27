@@ -23,13 +23,12 @@ from energycast.data import (
     TimeSeriesCleaner,
 )
 from energycast.features import (
-    CalendarFeatureBuilder,
     HorizonTargetBuilder,
-    LagFeatureBuilder,
     SequenceBuilder,
     SequenceDataset,
     SeriesScaler,
     TabularDataset,
+    build_features,
 )
 from energycast.models import LSTMForecaster, SklearnBaseline, build_from_settings
 from energycast.training.registry import (
@@ -64,12 +63,6 @@ def load_splits() -> DataSplits:
     return ChronologicalSplitter.from_settings().split(frame)
 
 
-def _features_for_split(frame: pd.DataFrame) -> pd.DataFrame:
-    calendar = CalendarFeatureBuilder().build(frame)
-    lagged = LagFeatureBuilder.from_settings().build(calendar)
-    return lagged.dropna()
-
-
 def _scale_columns(frame: pd.DataFrame, target: str) -> list[str]:
     """The MW-magnitude columns: the target and its lags. Calendar features are left as they are."""
     return [target] + [c for c in frame.columns if c.startswith(("lag_", "rolling_"))]
@@ -84,7 +77,7 @@ def prepare_data(splits: DataSplits, settings: Settings | None = None) -> Prepar
     settings = settings or get_settings()
     target = settings.data.source.target_column
 
-    features = {name: _features_for_split(getattr(splits, name)) for name in _SPLITS}
+    features = {name: build_features(getattr(splits, name)) for name in _SPLITS}
     columns = _scale_columns(features["train"], target)
     scaler = SeriesScaler.from_settings(columns=columns).fit(features["train"])
     scaled = {name: scaler.transform(frame) for name, frame in features.items()}

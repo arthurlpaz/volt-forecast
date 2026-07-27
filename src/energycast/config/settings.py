@@ -137,11 +137,18 @@ class BaselinesConfig(BaseModel):
     lightgbm: BaselineModelConfig
 
 
+class ServingConfig(BaseModel):
+    host: str
+    port: int = Field(gt=0, le=65535)
+    champion_model: str
+
+
 class BaseAppConfig(BaseModel):
     environment: Literal["development", "staging", "production"]
     paths: PathsConfig
     logging: LoggingConfig
     mlflow: MLflowConfig
+    serving: ServingConfig
 
 
 class DataConfig(BaseModel):
