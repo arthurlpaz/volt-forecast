@@ -143,12 +143,18 @@ class ServingConfig(BaseModel):
     champion_model: str
 
 
+class MonitoringConfig(BaseModel):
+    database_path: str
+    rolling_window_days: int = Field(gt=0)
+
+
 class BaseAppConfig(BaseModel):
     environment: Literal["development", "staging", "production"]
     paths: PathsConfig
     logging: LoggingConfig
     mlflow: MLflowConfig
     serving: ServingConfig
+    monitoring: MonitoringConfig
 
 
 class DataConfig(BaseModel):

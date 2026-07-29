@@ -18,3 +18,11 @@ serving:
   port: 8000
   # The registered roster model served by default. The M7 champion.
   champion_model: "lstm"
+
+monitoring:
+  # Own SQLite file: served forecasts persist here to be scored once the hours
+  # they predicted are measured. Separate from mlflow.db, which owns runs.
+  database_path: "monitoring.db"
+  # Rolling metrics span the anchors within this many days of the most recent
+  # one on record, so the window slides with the data instead of wall-clock.
+  rolling_window_days: 30
