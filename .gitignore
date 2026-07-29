@@ -50,6 +50,8 @@ mlruns/
 mlartifacts/
 # The MLflow sqlite tracking store from configs/base.yaml's tracking_uri.
 mlflow.db
+# The monitoring prediction store from configs/base.yaml's database_path.
+monitoring.db
 artifacts/*
 !artifacts/.gitkeep
 *.pt

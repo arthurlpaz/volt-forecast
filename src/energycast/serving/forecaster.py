@@ -36,6 +36,7 @@ class Forecast:
     model: str
     kind: str
     run_id: str
+    anchor: pd.Timestamp
     timestamps: pd.DatetimeIndex
     values: np.ndarray
 
@@ -102,6 +103,7 @@ class Forecaster:
             model=self.name,
             kind=self.loaded.meta.kind,
             run_id=self.loaded.run_id,
+            anchor=anchor,
             timestamps=timestamps,
             values=values,
         )
