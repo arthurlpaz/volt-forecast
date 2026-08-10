@@ -52,6 +52,8 @@ mlartifacts/
 mlflow.db
 # The monitoring prediction store from configs/base.yaml's database_path.
 monitoring.db
+# The drift run store from configs/base.yaml's drift.database_path.
+drift.db
 artifacts/*
 !artifacts/.gitkeep
 *.pt
