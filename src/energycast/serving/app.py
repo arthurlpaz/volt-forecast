@@ -6,7 +6,8 @@ twice. The model itself is loaded from the MLflow Registry, never refitted here.
 
 Every served forecast is persisted to the prediction store; `/actuals` feeds
 measured hours back in and `/metrics` rolls per-horizon error over the anchors
-that have since been reconciled.
+that have since been reconciled. `/drift` compares the recent measured
+distribution against the training reference.
 """
 
 from __future__ import annotations
@@ -20,6 +21,8 @@ from fastapi import Depends, FastAPI, Request
 from fastapi.responses import JSONResponse
 
 from energycast.config import Settings, get_settings
+from energycast.drift import DriftDetector, DriftError
+from energycast.drift.schemas import DriftResponse
 from energycast.monitoring import (
     MonitoringError,
     PredictionStore,
@@ -61,8 +64,13 @@ def _store(request: Request) -> PredictionStore:
     return request.app.state.store
 
 
+def _drift(request: Request) -> DriftDetector:
+    return request.app.state.drift
+
+
 Cache = Annotated[ForecasterCache, Depends(_cache)]
 Store = Annotated[PredictionStore, Depends(_store)]
+Drift = Annotated[DriftDetector, Depends(_drift)]
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -76,11 +84,13 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         cache.get(cache.champion)
         app.state.cache = cache
         app.state.store = SQLitePredictionStore(settings.base.monitoring.database_path)
+        app.state.drift = DriftDetector.from_settings(settings)
         logger.info(
             "serving ready",
             extra={"event": "serving_ready", "champion": cache.champion},
         )
         yield
+        app.state.drift.close()
         app.state.store.close()
 
     app = FastAPI(title="EnergyCast forecast API", lifespan=lifespan)
@@ -95,6 +105,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     @app.exception_handler(MonitoringError)
     async def _no_metrics_yet(request: Request, error: MonitoringError) -> JSONResponse:
+        return JSONResponse(status_code=404, content={"detail": str(error)})
+
+    @app.exception_handler(DriftError)
+    async def _no_drift_window(request: Request, error: DriftError) -> JSONResponse:
         return JSONResponse(status_code=404, content={"detail": str(error)})
 
     @app.get("/health")
@@ -128,5 +142,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             settings.base.monitoring.rolling_window_days,
         )
         return MetricsResponse.from_report(report)
+
+    @app.get("/drift", response_model=DriftResponse)
+    def drift(detector: Drift) -> DriftResponse:
+        return DriftResponse.from_result(detector.run())
 
     return app
