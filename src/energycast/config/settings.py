@@ -148,6 +148,14 @@ class MonitoringConfig(BaseModel):
     rolling_window_days: int = Field(gt=0)
 
 
+class DriftConfig(BaseModel):
+    database_path: str
+    window_days: int = Field(gt=0)
+    drift_share: float = Field(ge=0.0, le=1.0)
+    method: str
+    snapshot_dir: str
+
+
 class BaseAppConfig(BaseModel):
     environment: Literal["development", "staging", "production"]
     paths: PathsConfig
@@ -155,6 +163,7 @@ class BaseAppConfig(BaseModel):
     mlflow: MLflowConfig
     serving: ServingConfig
     monitoring: MonitoringConfig
+    drift: DriftConfig
 
 
 class DataConfig(BaseModel):
