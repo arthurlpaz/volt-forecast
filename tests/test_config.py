@@ -12,7 +12,7 @@ import pytest
 from pydantic import ValidationError
 
 from energycast.config import Settings, get_settings
-from energycast.config.settings import SplitConfig, _load_yaml
+from energycast.config.settings import DriftConfig, SplitConfig, _load_yaml
 
 
 @pytest.fixture(autouse=True)
@@ -66,6 +66,27 @@ class TestSplitValidation:
     def test_zero_and_negative_ratios_are_rejected(self):
         with pytest.raises(ValidationError):
             SplitConfig(train_ratio=1.2, validation_ratio=-0.1, test_ratio=-0.1)
+
+
+class TestDriftConfig:
+    def test_real_yaml_drift_block_loads(self):
+        drift = get_settings().base.drift
+
+        assert drift.window_days > 0
+        assert 0.0 <= drift.drift_share <= 1.0
+        assert drift.method
+        assert drift.database_path
+
+    @pytest.mark.parametrize("share", [-0.1, 1.5])
+    def test_drift_share_outside_the_unit_interval_is_rejected(self, share):
+        with pytest.raises(ValidationError):
+            DriftConfig(
+                database_path="drift.db",
+                window_days=30,
+                drift_share=share,
+                method="wasserstein",
+                snapshot_dir="artifacts/drift",
+            )
 
 
 class TestEnvironmentOverrides:

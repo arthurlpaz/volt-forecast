@@ -26,3 +26,18 @@ monitoring:
   # Rolling metrics span the anchors within this many days of the most recent
   # one on record, so the window slides with the data instead of wall-clock.
   rolling_window_days: 30
+
+drift:
+  # Own SQLite file, sibling of monitoring.db: each drift run's dataset-level
+  # signal is persisted here for the retraining trigger to read later.
+  database_path: "drift.db"
+  # The current window spans this many days of the most recent measured hours,
+  # compared against the training distribution as reference.
+  window_days: 30
+  # Share of magnitude columns that must drift before the dataset is called
+  # drifted. Evidently's DriftedColumnsCount threshold.
+  drift_share: 0.5
+  # Per-column statistical test for the numeric magnitude columns.
+  method: "wasserstein"
+  # Where the human-facing Evidently HTML snapshot of each run is written.
+  snapshot_dir: "artifacts/drift"
