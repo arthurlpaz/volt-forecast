@@ -54,9 +54,11 @@ class Forecaster:
         self._max_lookback = max([*features.lags, *features.rolling_windows])
 
     @classmethod
-    def from_registered(cls, name: str, settings: Settings | None = None) -> Forecaster:
+    def from_registered(
+        cls, name: str, settings: Settings | None = None, alias: str | None = None
+    ) -> Forecaster:
         settings = settings or get_settings()
-        return cls(load_registered(registered_name(name)), settings)
+        return cls(load_registered(registered_name(name), alias=alias), settings)
 
     @property
     def name(self) -> str:

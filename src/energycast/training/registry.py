@@ -17,6 +17,7 @@ import joblib
 import mlflow
 import mlflow.pytorch
 import mlflow.sklearn
+from mlflow.exceptions import MlflowException
 from mlflow.tracking import MlflowClient
 
 from energycast.features import SeriesScaler
@@ -45,9 +46,41 @@ class RegistryError(RuntimeError):
     """Raised when a model cannot be persisted or brought back whole."""
 
 
+CHAMPION = "champion"
+CHALLENGER = "challenger"
+
+
 def registered_name(name: str) -> str:
     """The Model Registry name a roster model is registered and loaded under."""
     return f"energycast-{name}"
+
+
+def set_alias(registered_name: str, alias: str, version: str) -> None:
+    """Point a Registry alias, e.g. champion, at a specific model version."""
+    MlflowClient().set_registered_model_alias(registered_name, alias, version)
+    logger.info(
+        "set model alias",
+        extra={
+            "event": "model_alias_set",
+            "registered_name": registered_name,
+            "alias": alias,
+            "version": version,
+        },
+    )
+
+
+def alias_version(registered_name: str, alias: str) -> str | None:
+    """The version an alias points at, or None when the alias is unset."""
+    try:
+        return str(MlflowClient().get_model_version_by_alias(registered_name, alias).version)
+    except MlflowException:
+        return None
+
+
+def resolve_version(registered_name: str, alias: str | None = None) -> str:
+    """The version an alias points at, or the latest when the alias is unset."""
+    version = alias_version(registered_name, alias) if alias is not None else None
+    return version or _latest_version(MlflowClient(), registered_name)
 
 
 @dataclass(frozen=True)
@@ -108,11 +141,17 @@ def log_and_register(
     return version
 
 
-def load_registered(registered_name: str, version: str | None = None) -> LoadedModel:
-    """Bring a registered model back whole: model, scaler and meta."""
-    client = MlflowClient()
+def load_registered(
+    registered_name: str, version: str | None = None, alias: str | None = None
+) -> LoadedModel:
+    """Bring a registered model back whole: model, scaler and meta.
+
+    An alias resolves to its version when set; otherwise the latest version is
+    loaded, so a champion falls back to the newest model before it is promoted.
+    """
     if version is None:
-        version = _latest_version(client, registered_name)
+        version = resolve_version(registered_name, alias)
+    client = MlflowClient()
     run_id = client.get_model_version(registered_name, version).run_id
 
     meta = _load_meta(run_id)

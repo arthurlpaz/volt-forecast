@@ -14,23 +14,31 @@ from energycast.training.pipeline import (
     prepare_data,
 )
 from energycast.training.registry import (
+    CHALLENGER,
+    CHAMPION,
     LoadedModel,
     ModelMeta,
     RegistryError,
+    alias_version,
     load_registered,
     log_and_register,
     lstm_hyperparameters,
     registered_name,
+    resolve_version,
+    set_alias,
 )
 from energycast.training.tracking import ExperimentTracker
 
 __all__ = [
+    "CHALLENGER",
+    "CHAMPION",
     "ExperimentTracker",
     "LoadedModel",
     "ModelMeta",
     "PreparedData",
     "RegistryError",
     "TrainingPipeline",
+    "alias_version",
     "load_registered",
     "load_splits",
     "log_and_register",
@@ -38,4 +46,6 @@ __all__ = [
     "main",
     "prepare_data",
     "registered_name",
+    "resolve_version",
+    "set_alias",
 ]
