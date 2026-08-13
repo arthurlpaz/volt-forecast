@@ -30,9 +30,11 @@ from energycast.monitoring import (
     rolling_report,
 )
 from energycast.monitoring.schemas import ActualsRequest, ActualsResponse, MetricsResponse
+from energycast.retraining import RetrainingOrchestrator
+from energycast.retraining.schemas import RetrainCheckResponse
 from energycast.serving.forecaster import Forecaster, ForecastError
 from energycast.serving.schemas import ForecastRequest, ForecastResponse
-from energycast.training import RegistryError
+from energycast.training import CHAMPION, RegistryError
 from energycast.utils import get_logger
 
 logger = get_logger(__name__)
@@ -48,7 +50,8 @@ class ForecasterCache:
 
     def get(self, name: str) -> Forecaster:
         if name not in self._forecasters:
-            self._forecasters[name] = Forecaster.from_registered(name, self.settings)
+            alias = CHAMPION if name == self.champion else None
+            self._forecasters[name] = Forecaster.from_registered(name, self.settings, alias=alias)
         return self._forecasters[name]
 
     @property
@@ -68,9 +71,14 @@ def _drift(request: Request) -> DriftDetector:
     return request.app.state.drift
 
 
+def _retraining(request: Request) -> RetrainingOrchestrator:
+    return request.app.state.retraining
+
+
 Cache = Annotated[ForecasterCache, Depends(_cache)]
 Store = Annotated[PredictionStore, Depends(_store)]
 Drift = Annotated[DriftDetector, Depends(_drift)]
+Retraining = Annotated[RetrainingOrchestrator, Depends(_retraining)]
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -85,11 +93,13 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         app.state.cache = cache
         app.state.store = SQLitePredictionStore(settings.base.monitoring.database_path)
         app.state.drift = DriftDetector.from_settings(settings)
+        app.state.retraining = RetrainingOrchestrator.from_settings(settings)
         logger.info(
             "serving ready",
             extra={"event": "serving_ready", "champion": cache.champion},
         )
         yield
+        app.state.retraining.close()
         app.state.drift.close()
         app.state.store.close()
 
@@ -146,5 +156,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     @app.get("/drift", response_model=DriftResponse)
     def drift(detector: Drift) -> DriftResponse:
         return DriftResponse.from_result(detector.run())
+
+    @app.get("/retrain/check", response_model=RetrainCheckResponse)
+    def retrain_check(orchestrator: Retraining) -> RetrainCheckResponse:
+        signals, decision = orchestrator.check()
+        return RetrainCheckResponse.from_check(signals, decision)
 
     return app

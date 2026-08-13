@@ -54,6 +54,8 @@ mlflow.db
 monitoring.db
 # The drift run store from configs/base.yaml's drift.database_path.
 drift.db
+# The retraining cycle store from configs/base.yaml's retraining.database_path.
+retraining.db
 artifacts/*
 !artifacts/.gitkeep
 *.pt
