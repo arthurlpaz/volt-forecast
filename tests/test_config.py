@@ -12,7 +12,12 @@ import pytest
 from pydantic import ValidationError
 
 from energycast.config import Settings, get_settings
-from energycast.config.settings import DriftConfig, SplitConfig, _load_yaml
+from energycast.config.settings import (
+    DriftConfig,
+    RetrainingConfig,
+    SplitConfig,
+    _load_yaml,
+)
 
 
 @pytest.fixture(autouse=True)
@@ -87,6 +92,32 @@ class TestDriftConfig:
                 method="wasserstein",
                 snapshot_dir="artifacts/drift",
             )
+
+
+class TestRetrainingConfig:
+    def test_real_yaml_retraining_block_loads(self):
+        retraining = get_settings().base.retraining
+
+        assert retraining.rmse_threshold > 0
+        assert retraining.new_observations_threshold > 0
+        assert retraining.promotion_margin >= 0
+        assert isinstance(retraining.drift_triggers, bool)
+
+    @pytest.mark.parametrize(
+        ("field", "value"),
+        [("rmse_threshold", -1.0), ("new_observations_threshold", 0), ("promotion_margin", -0.1)],
+    )
+    def test_out_of_range_thresholds_are_rejected(self, field, value):
+        base = {
+            "database_path": "retraining.db",
+            "drift_triggers": True,
+            "rolling_window_days": 30,
+            "rmse_threshold": 2500.0,
+            "new_observations_threshold": 720,
+            "promotion_margin": 0.0,
+        }
+        with pytest.raises(ValidationError):
+            RetrainingConfig(**{**base, field: value})
 
 
 class TestEnvironmentOverrides:
