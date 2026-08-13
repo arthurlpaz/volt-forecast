@@ -41,3 +41,20 @@ drift:
   method: "wasserstein"
   # Where the human-facing Evidently HTML snapshot of each run is written.
   snapshot_dir: "artifacts/drift"
+
+retraining:
+  # Own SQLite file: each retraining cycle logs what triggered it and whether a
+  # challenger was promoted, and its data cutoff is the baseline for counting new
+  # observations on the next run.
+  database_path: "retraining.db"
+  # A retrain fires when ANY enabled condition trips (OR), never on a fixed cron.
+  # The latest drift run's verdict trips the drift condition.
+  drift_triggers: true
+  # Rolling RMSE mean over this window, above this many MW, trips the error one.
+  rolling_window_days: 30
+  rmse_threshold: 2500.0
+  # Measured hours accumulated past the champion's data cutoff, above this count,
+  # trips the volume one.
+  new_observations_threshold: 720
+  # Fraction by which a challenger's RMSE must beat the champion's to be promoted.
+  promotion_margin: 0.0

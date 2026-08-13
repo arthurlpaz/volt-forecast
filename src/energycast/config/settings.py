@@ -156,6 +156,15 @@ class DriftConfig(BaseModel):
     snapshot_dir: str
 
 
+class RetrainingConfig(BaseModel):
+    database_path: str
+    drift_triggers: bool
+    rolling_window_days: int = Field(gt=0)
+    rmse_threshold: float = Field(gt=0.0)
+    new_observations_threshold: int = Field(gt=0)
+    promotion_margin: float = Field(ge=0.0)
+
+
 class BaseAppConfig(BaseModel):
     environment: Literal["development", "staging", "production"]
     paths: PathsConfig
@@ -164,6 +173,7 @@ class BaseAppConfig(BaseModel):
     serving: ServingConfig
     monitoring: MonitoringConfig
     drift: DriftConfig
+    retraining: RetrainingConfig
 
 
 class DataConfig(BaseModel):
