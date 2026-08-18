@@ -1,0 +1,42 @@
+# One image, two long-running roles. Training and retraining are one-off
+# commands against the same image (see README): they write to the shared state
+# volume that serving and the MLflow UI both read.
+
+services:
+  serving:
+    build: .
+    image: energycast-ai
+    ports:
+      - "8000:8000"
+    environment:
+      # All persistent state lives in the mounted volume, not the image.
+      ENERGYCAST_BASE__MLFLOW__TRACKING_URI: "sqlite:////app/state/mlflow.db"
+      ENERGYCAST_BASE__MONITORING__DATABASE_PATH: "/app/state/monitoring.db"
+      ENERGYCAST_BASE__DRIFT__DATABASE_PATH: "/app/state/drift.db"
+      ENERGYCAST_BASE__DRIFT__SNAPSHOT_DIR: "/app/state/artifacts/drift"
+      ENERGYCAST_BASE__RETRAINING__DATABASE_PATH: "/app/state/retraining.db"
+    volumes:
+      # The raw PJME data is mounted read-only; it is never baked into the image.
+      - ./data:/app/data:ro
+      - state:/app/state
+
+  mlflow-ui:
+    image: energycast-ai
+    command:
+      - mlflow
+      - ui
+      - --backend-store-uri
+      - sqlite:////app/state/mlflow.db
+      - --host
+      - 0.0.0.0
+      - --port
+      - "5000"
+    ports:
+      - "5000:5000"
+    volumes:
+      - state:/app/state
+    depends_on:
+      - serving
+
+volumes:
+  state:

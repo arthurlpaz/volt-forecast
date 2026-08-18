@@ -1,0 +1,38 @@
+# Version control and internal docs
+.git
+.gitignore
+.pre-commit-config.yaml
+CLAUDE.md
+notes
+
+# Tests are not needed in the runtime image
+tests
+
+# Data and generated state are mounted at runtime, never baked in
+data
+artifacts
+mlruns
+mlartifacts
+*.db
+
+# Python caches and local virtualenvs
+__pycache__
+*.py[cod]
+.venv
+venv
+env
+.ruff_cache
+.mypy_cache
+.pytest_cache
+.coverage
+.coverage.*
+htmlcov
+
+# Local environment and logs
+.env
+.env.*
+*.log
+
+# Editors
+.idea
+.vscode
